@@ -10,7 +10,7 @@ app.get("/convertTo32", async (req, res) => {
             responseType: 'arraybuffer'
         });
 
-        const SIZE = 100;
+        const SIZE = parseInt(req.query.size || "100");
         const bg = { r: 0, g: 0, b: 0 }; // สี background
 
         let result = await sharp(response.data)
