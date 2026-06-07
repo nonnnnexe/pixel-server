@@ -10,33 +10,37 @@ app.get("/convertTo32", async (req, res) => {
             responseType: 'arraybuffer'
         });
 
-        const SIZE = parseInt(req.query.size || "100");
-        const bg = { r: 0, g: 0, b: 0 };
+        const screenW = parseInt(req.query.screenW || "1024");
+        const screenH = parseInt(req.query.screenH || "768");
+        const MAX = 1024;
 
-        // ✅ ดึง raw ก่อน flatten เพื่อรู้ว่า pixel ไหน transparent
         const rawResult = await sharp(response.data)
-            .resize(SIZE, SIZE, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } })
+            .resize(Math.min(screenW, MAX), Math.min(screenH, MAX), {
+                fit: 'inside',
+                withoutEnlargement: false,
+                kernel: sharp.kernel.lanczos3  // ✅ algorithm คมสุด
+            })
             .ensureAlpha()
             .raw()
             .toBuffer({ resolveWithObject: true });
 
         const rawData = rawResult.data;
-        const width = rawResult.info.width;
-        const height = rawResult.info.height;
-
-        // ✅ สร้าง alpha mask และ RGB array
         const rgbArray = [];
         const alphaArray = [];
 
         for (let i = 0; i < rawData.length; i += 4) {
             rgbArray.push(rawData[i], rawData[i + 1], rawData[i + 2]);
-            alphaArray.push(rawData[i + 3] < 10 ? 0 : 1); // 0 = transparent, 1 = visible
+            alphaArray.push(rawData[i + 3] < 10 ? 0 : 1);
         }
 
         res.json({
             data: { data: rgbArray },
-            alpha: alphaArray,  // ✅ ส่ง alpha mask มาด้วย
-            info: { width, height, channels: 3 }
+            alpha: alphaArray,
+            info: {
+                width: rawResult.info.width,
+                height: rawResult.info.height,
+                channels: 3
+            }
         });
 
     } catch (err) {
