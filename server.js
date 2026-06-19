@@ -70,7 +70,7 @@ async function processImage(buffer, screenW, screenH) {
 }
 
 async function processGif(buffer, screenW, screenH) {
-    const MAX_FRAMES = 30        // ✅ ลด frames
+    const MAX_FRAMES = 20        // ✅ ลด frames
     const MAX_SIZE = 200         // ✅ จำกัดขนาดสูงสุด
 
     const gif = await GifUtil.read(Buffer.from(buffer))
