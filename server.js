@@ -70,14 +70,20 @@ async function processImage(buffer, screenW, screenH) {
 }
 
 async function processGif(buffer, screenW, screenH) {
-    const MAX_FRAMES = 30;
-    const gif = await GifUtil.read(Buffer.from(buffer));
-    const frames = [];
+    const MAX_FRAMES = 15        // ✅ ลด frames
+    const MAX_SIZE = 200         // ✅ จำกัดขนาดสูงสุด
 
-    // ✅ คำนวณขนาดจริงที่จะ resize ก่อน
-    const scale = Math.min(screenW / gif.width, screenH / gif.height);
-    const targetW = Math.floor(gif.width * scale);
-    const targetH = Math.floor(gif.height * scale);
+    const gif = await GifUtil.read(Buffer.from(buffer))
+
+    // ✅ จำกัดขนาดไม่เกิน MAX_SIZE
+    const scale = Math.min(
+        Math.min(screenW, MAX_SIZE) / gif.width,
+        Math.min(screenH, MAX_SIZE) / gif.height
+    )
+    const targetW = Math.floor(gif.width * scale)
+    const targetH = Math.floor(gif.height * scale)
+
+    const frames = []
 
     for (const frame of gif.frames.slice(0, MAX_FRAMES)) {
         const rawResult = await sharp(frame.bitmap.data, {
@@ -87,35 +93,35 @@ async function processGif(buffer, screenW, screenH) {
                 channels: 4
             }
         })
-            .resize(targetW, targetH)  // ✅ resize ให้พอดีหน้าจอเลย
+            .resize(targetW, targetH)
             .ensureAlpha()
             .raw()
-            .toBuffer({ resolveWithObject: true });
+            .toBuffer({ resolveWithObject: true })
 
-        const rgbArray = [];
-        const alphaArray = [];
+        const rgbArray = []
+        const alphaArray = []
 
         for (let i = 0; i < rawResult.data.length; i += 4) {
-            rgbArray.push(rawResult.data[i], rawResult.data[i + 1], rawResult.data[i + 2]);
-            alphaArray.push(rawResult.data[i + 3] < 10 ? 0 : 1);
+            rgbArray.push(rawResult.data[i], rawResult.data[i + 1], rawResult.data[i + 2])
+            alphaArray.push(rawResult.data[i + 3] < 10 ? 0 : 1)
         }
 
         frames.push({
             data: rgbArray,
             alpha: alphaArray,
             delay: frame.delayCentisecs * 10
-        });
+        })
     }
 
     return {
         type: 'gif',
         frames: frames,
         info: {
-            width: targetW,   // ✅ ส่งขนาดจริงที่ resize แล้ว
+            width: targetW,
             height: targetH,
             frameCount: frames.length
         }
-    };
+    }
 }
 
 // ✅ endpoint เดียว รองรับทั้ง Image และ GIF
