@@ -69,10 +69,15 @@ async function processImage(buffer, screenW, screenH) {
     };
 }
 
-async function processGif(buffer, size) {
+async function processGif(buffer, screenW, screenH) {
     const MAX_FRAMES = 30;
     const gif = await GifUtil.read(Buffer.from(buffer));
     const frames = [];
+
+    // ✅ คำนวณขนาดจริงที่จะ resize ก่อน
+    const scale = Math.min(screenW / gif.width, screenH / gif.height);
+    const targetW = Math.floor(gif.width * scale);
+    const targetH = Math.floor(gif.height * scale);
 
     for (const frame of gif.frames.slice(0, MAX_FRAMES)) {
         const rawResult = await sharp(frame.bitmap.data, {
@@ -82,7 +87,7 @@ async function processGif(buffer, size) {
                 channels: 4
             }
         })
-            .resize(size, size, { fit: 'inside', kernel: sharp.kernel.lanczos3 })
+            .resize(targetW, targetH)  // ✅ resize ให้พอดีหน้าจอเลย
             .ensureAlpha()
             .raw()
             .toBuffer({ resolveWithObject: true });
@@ -106,8 +111,8 @@ async function processGif(buffer, size) {
         type: 'gif',
         frames: frames,
         info: {
-            width: gif.width,
-            height: gif.height,
+            width: targetW,   // ✅ ส่งขนาดจริงที่ resize แล้ว
+            height: targetH,
             frameCount: frames.length
         }
     };
@@ -140,7 +145,7 @@ app.get("/convert", async (req, res) => {
 
         let result;
         if (type === 'gif') {
-            result = await processGif(buffer, size);
+            result = await processGif(buffer, screenW, screenH);  // ✅ ส่ง screenW/H
         } else {
             result = await processImage(buffer, screenW, screenH);
         }
