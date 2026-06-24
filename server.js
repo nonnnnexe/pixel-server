@@ -140,11 +140,14 @@ app.get("/convert", async (req, res) => {
         }
 
         const response = await axios({
-            url,
+            url: url,
             responseType: 'arraybuffer',
             maxContentLength: 10 * 1024 * 1024,
-            timeout: 15000
-        });
+            timeout: 15000,
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+            }
+        })
 
         const buffer = Buffer.from(response.data);
         const type = await detectType(url, buffer);
