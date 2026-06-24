@@ -128,6 +128,7 @@ async function processGif(buffer, screenW, screenH) {
 app.get("/convert", async (req, res) => {
     try {
         const url = req.query.url;
+        console.log("URL received:", url)  // ✅ เพิ่มบรรทัดนี้
         const screenW = parseInt(req.query.screenW || "1024");
         const screenH = parseInt(req.query.screenH || "768");
         const size = parseInt(req.query.size || "64");
