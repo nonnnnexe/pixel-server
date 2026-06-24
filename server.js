@@ -160,10 +160,11 @@ app.get("/convert", async (req, res) => {
         res.json(result);
 
     } catch (err) {
+        console.error("❌ Error:", err.message)  // ✅ เพิ่มบรรทัดนี้
         if (err.code === 'ECONNABORTED') {
-            return res.status(408).json({ error: "Timeout" });
+            return res.status(408).json({ error: "Timeout" })
         }
-        res.status(500).json({ error: err.message });
+        res.status(500).json({ error: err.message })
     }
 });
 
