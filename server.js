@@ -1,7 +1,6 @@
 const sharp = require('sharp');
 const axios = require("axios");
 const express = require("express");
-const { GifUtil } = require('gifwrap');
 const app = express();
 
 const cache = new Map();
@@ -70,30 +69,28 @@ async function processImage(buffer, screenW, screenH) {
 }
 
 async function processGif(buffer, screenW, screenH) {
-    const MAX_FRAMES = 30        // ✅ ลด frames
-    const MAX_SIZE = 200         // ✅ จำกัดขนาดสูงสุด
+    const MAX_FRAMES = 30
+    const MAX_SIZE = 200
 
-    const gif = await GifUtil.read(Buffer.from(buffer))
-
-    // ✅ จำกัดขนาดไม่เกิน MAX_SIZE
     const scale = Math.min(
-        Math.min(screenW, MAX_SIZE) / gif.width,
-        Math.min(screenH, MAX_SIZE) / gif.height
+        Math.min(screenW, MAX_SIZE) / 100,
+        Math.min(screenH, MAX_SIZE) / 100
     )
-    const targetW = Math.floor(gif.width * scale)
-    const targetH = Math.floor(gif.height * scale)
+
+    // ✅ ใช้ sharp แยก frames จาก GIF
+    const metadata = await sharp(buffer, { animated: true }).metadata()
+    const frameCount = Math.min(metadata.pages || 1, MAX_FRAMES)
+    const delay = metadata.delay || []
 
     const frames = []
 
-    for (const frame of gif.frames.slice(0, MAX_FRAMES)) {
-        const rawResult = await sharp(frame.bitmap.data, {
-            raw: {
-                width: frame.bitmap.width,
-                height: frame.bitmap.height,
-                channels: 4
-            }
-        })
-            .resize(targetW, targetH)
+    for (let i = 0; i < frameCount; i++) {
+        const rawResult = await sharp(buffer, { animated: false, page: i })
+            .resize(
+                Math.min(screenW, MAX_SIZE),
+                Math.min(screenH, MAX_SIZE),
+                { fit: 'inside', kernel: 'lanczos3' }
+            )
             .ensureAlpha()
             .raw()
             .toBuffer({ resolveWithObject: true })
@@ -101,24 +98,24 @@ async function processGif(buffer, screenW, screenH) {
         const rgbArray = []
         const alphaArray = []
 
-        for (let i = 0; i < rawResult.data.length; i += 4) {
-            rgbArray.push(rawResult.data[i], rawResult.data[i + 1], rawResult.data[i + 2])
-            alphaArray.push(rawResult.data[i + 3] < 10 ? 0 : 1)
+        for (let j = 0; j < rawResult.data.length; j += 4) {
+            rgbArray.push(rawResult.data[j], rawResult.data[j + 1], rawResult.data[j + 2])
+            alphaArray.push(rawResult.data[j + 3] < 10 ? 0 : 1)
         }
 
         frames.push({
             data: rgbArray,
             alpha: alphaArray,
-            delay: frame.delayCentisecs * 10
+            delay: delay[i] || 100
         })
     }
 
     return {
         type: 'gif',
-        frames: frames,
+        frames,
         info: {
-            width: targetW,
-            height: targetH,
+            width: frames[0] ? Math.min(screenW, MAX_SIZE) : 0,
+            height: frames[0] ? Math.min(screenH, MAX_SIZE) : 0,
             frameCount: frames.length
         }
     }
